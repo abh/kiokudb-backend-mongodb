@@ -100,7 +100,7 @@ sub delete {
 sub deserialize {
     my ( $self, $doc ) = @_;
     my %doc = %{ $doc };
-    return $self->expand_jspon(\%doc, backend_data => $doc );
+    return $self->expand_jspon(\%doc);
 }
 
 sub exists {
