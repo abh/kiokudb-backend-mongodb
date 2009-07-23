@@ -81,9 +81,14 @@ sub insert {
 }
 
 sub get {
-    my ( $self, @ids ) = @_;
+    my ($self, @ids) = @_;
     my $coll = $self->collection;
-    map { $self->deserialize($_) } map { $coll->find_one({ _id => $_ }) } @ids;
+    map { $self->deserialize($_) }
+      map {
+        $coll->find_one({_id => $_})
+          or die {missing => 1};
+
+      } @ids;
 }
 
 sub delete {
