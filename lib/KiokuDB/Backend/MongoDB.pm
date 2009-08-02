@@ -69,15 +69,16 @@ sub insert {
 
     for my $entry (@entries) {
         my $collapsed = $self->collapse_jspon($entry); 
-        if ($collapsed->{_id}) {
-            $coll->update({ _id => $collapsed->{_id} }, $collapsed, 1);
+        if ($entry->prev) {
+            $coll->update({ _id => $collapsed->{_id} }, $collapsed);
         }
         else {
             $coll->insert($collapsed);
+            my $err = $coll->_database->run_command({getlasterror => 1});
+            die $err->{err} if $err->{err};
         }
     }
-    
-    # TODO: error checking? (Not really implemented in MongoDB yet)
+    return;
 }
 
 sub get {
@@ -117,8 +118,8 @@ sub exists {
 
 
 __PACKAGE__->meta->make_immutable;
-__PACKAGE__
 
+1;
 
 __END__
 
