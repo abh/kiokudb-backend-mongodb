@@ -7,10 +7,9 @@ our $VERSION = '0.01';
 with qw(
          KiokuDB::Backend
          KiokuDB::Backend::Serialize::JSPON
-         KiokuDB::Backend::Role::UnicodeSafe
          KiokuDB::Backend::Role::Clear
          KiokuDB::Backend::Role::Scan
-         
+         KiokuDB::Backend::Role::Query::Simple
 );
 
 # TODO: 
@@ -18,36 +17,36 @@ with qw(
 #   http://search.cpan.org/~nuffin/KiokuDB-0.31/lib/KiokuDB/Backend/Role/Query/Simple.pm
 
 use Carp qw(croak);
+use Data::Stream::Bulk::Util qw(bulk);
+
+has [qw/database_name database_host database_port collection_name/] => (
+    is  => 'ro',
+    isa => 'Str',
+);
 
 has collection => (
     isa => 'MongoDB::Collection',
     is  => 'ro',
+    lazy => 1,
+    builder => '_build_collection',
 );
 
 has '+id_field'    => ( default => "_id" );
 has '+class_field' => ( default => "class" );
 has '+class_meta_field' => ( default => "class_meta" );
 
-sub new_from_dsn_params {
-    my ($self, %args) = @_;
+sub _build_collection {
+    my ($self) = @_;
+    my $host = $self->database_host || 'localhost';
+    my $port = $self->database_port || 27017;
+    die "collection_name required" unless $self->collection_name;
+    my $conn = MongoDB::Connection->new(host => $host, port => $port);
+    return $conn->get_database($self->database_name)->get_collection($self->collection_name);
+}
 
-    my $mongodb;
-
-    unless ($args{collection}) {
-        $args{host} ||= 'localhost';
-        $args{port} ||= 27017;
-        $args{database_name}   or croak "database parameter required";
-        $args{collection_name} or croak "collection parameter required";
-        $mongodb =
-          MongoDB::Connection->new(host => $args{host}, port => $args{port});
-    }
-
-
-    my $collection = $args{collection} ||
-      $mongodb->get_database($args{database})
-      ->get_collection($args{collection});
-
-    $self->new(%args, collection => $collection);
+sub BUILD {
+    my ($self) = @_;
+    $self->collection;
 }
 
 sub clear {
@@ -56,8 +55,16 @@ sub clear {
 }
 
 sub all_entries {
-    my $self = shift;
-    bulk($self->collection->find());
+    my $self   = shift;
+    my $cursor = $self->collection->query();
+    Data::Stream::Bulk::Callback->new(
+        callback => sub {
+            if (my $obj = $cursor->next) {
+                return [$obj];
+            }
+            return;
+        }
+    );
 }
 
 sub insert {
@@ -65,10 +72,8 @@ sub insert {
 
     my $coll = $self->collection;
 
-    use Data::Dump qw(pp);
-
     for my $entry (@entries) {
-        my $collapsed = $self->collapse_jspon($entry); 
+        my $collapsed = $self->serialize($entry); 
         if ($entry->prev) {
             $coll->update({ _id => $collapsed->{_id} }, $collapsed);
         }
@@ -83,38 +88,56 @@ sub insert {
 
 sub get {
     my ($self, @ids) = @_;
-    my $coll = $self->collection;
-    map { $self->deserialize($_) }
-      map {
-        $coll->find_one({_id => $_})
-          or die {missing => 1};
-
-      } @ids;
+    return map {
+        $self->get_entry($_)
+    } @ids;
+}
+ 
+sub get_entry {
+    my ($self, $id) = @_;
+    my $obj = $self->collection->find_one({ _id => $id });
+    return undef unless $obj;
+    return $self->deserialize($obj);
 }
 
 sub delete {
-    my ( $self, @ids_or_entries ) = @_;
-    my $coll = $self->collection;
-    my @ids = map { $_->{_id} } grep { ref } @ids_or_entries;
-    push @ids, grep { not ref } @ids_or_entries;
-    for my $id (@ids) {
-        $coll->remove({ _id => $id });
+    my ($self, @ids_or_entries) = @_;
+    for my $id (map { $_->isa('KiokuDB::Entry') ? $_->id : $_ } @ids_or_entries)
+    {
+        $self->collection->remove({_id => $id});
     }
-    
-}
-
-sub deserialize {
-    my ( $self, $doc ) = @_;
-    my %doc = %{ $doc };
-    return $self->expand_jspon(\%doc);
+    return;
 }
 
 sub exists {
     my ($self, @ids) = @_;
     my $coll = $self->collection;
-    map { $coll->find_one({ _id => $_ }) } @ids;
+    return map { $coll->find_one({ _id => $_ }) } @ids;
+    # $self->get(@ids);
 }
 
+sub simple_search {
+    my ($self, $proto) = @_;
+    my $cursor = $self->collection->query($proto);
+    return Data::Stream::Bulk::Callback->new(
+        sub {
+            if (my $obj = $cursor->next) {
+                return [$obj];
+            }
+            return;
+        }
+    );
+}
+
+sub serialize {
+    my $self = shift;
+    return $self->collapse_jspon(@_);
+}
+
+sub deserialize {
+    my ( $self, $doc ) = @_;
+    return $self->expand_jspon($doc);
+}
 
 
 __PACKAGE__->meta->make_immutable;
@@ -147,21 +170,6 @@ Perhaps a little code snippet.
     my $foo = KiokuDB::Backend::MongoDB->new();
     ...
 
-=head1 FUNCTIONS
-
-=head2 function1
-
-=cut
-
-sub function1 {
-}
-
-=head2 function2
-
-=cut
-
-sub function2 {
-}
 
 =head1 AUTHOR
 
