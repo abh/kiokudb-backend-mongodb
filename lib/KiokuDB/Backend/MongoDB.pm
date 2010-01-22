@@ -8,16 +8,16 @@ with qw(
          KiokuDB::Backend
          KiokuDB::Backend::Serialize::JSPON
          KiokuDB::Backend::Role::Clear
-         KiokuDB::Backend::Role::Scan
          KiokuDB::Backend::Role::Query::Simple
 );
 
 # TODO: 
-#   KiokuDB::Backend::Role::Query::Simple
-#   http://search.cpan.org/~nuffin/KiokuDB-0.31/lib/KiokuDB/Backend/Role/Query/Simple.pm
+#    KiokuDB::Backend::Role::Scan
+#     (for some reason then all_entries doesn't always return all entries)
 
 use Carp qw(croak);
 use Data::Stream::Bulk::Util qw(bulk);
+use Data::Stream::Bulk::Callback ();
 
 has [qw/database_name database_host database_port collection_name/] => (
     is  => 'ro',
@@ -56,11 +56,14 @@ sub clear {
 
 sub all_entries {
     my $self   = shift;
-    my $cursor = $self->collection->query();
+    my $count = $self->collection->count({});
+    my $cursor = $self->collection->query({});
     Data::Stream::Bulk::Callback->new(
         callback => sub {
             if (my $obj = $cursor->next) {
-                return [$obj];
+                #warn "NAME: ", $obj->{data}->{name};
+                #pp($obj);
+                return [$self->deserialize($obj)];
             }
             return;
         }
@@ -76,6 +79,8 @@ sub insert {
         my $collapsed = $self->serialize($entry); 
         if ($entry->prev) {
             $coll->update({ _id => $collapsed->{_id} }, $collapsed);
+            my $err = $coll->_database->run_command({getlasterror => 1});
+            die $err->{err} if $err->{err};
         }
         else {
             $coll->insert($collapsed);
@@ -118,16 +123,25 @@ sub exists {
 
 sub simple_search {
     my ($self, $proto) = @_;
+
+    for my $key (keys %$proto) {
+        next if $key =~ m/^data\./;
+        my $value = delete $proto->{$key};
+        $proto->{"data.$key"} = ( defined $value ? "$value" : $value );
+    }
+
     my $cursor = $self->collection->query($proto);
     return Data::Stream::Bulk::Callback->new(
-        sub {
+        callback => sub {
             if (my $obj = $cursor->next) {
-                return [$obj];
+                return [$self->deserialize($obj)];
+                #return [$obj];
             }
             return;
         }
     );
 }
+
 
 sub serialize {
     my $self = shift;
@@ -135,9 +149,10 @@ sub serialize {
 }
 
 sub deserialize {
-    my ( $self, $doc ) = @_;
-    return $self->expand_jspon($doc);
+    my ( $self, $doc, @args ) = @_;
+    $self->expand_jspon( $doc, @args );
 }
+
 
 
 __PACKAGE__->meta->make_immutable;
@@ -150,26 +165,29 @@ __END__
 
 KiokuDB::Backend::MongoDB - MongoDB backend for KiokuDB
 
-=head1 VERSION
-
-Version 0.01
-
-=cut
-
-our $VERSION = '0.01';
-
-
 =head1 SYNOPSIS
-
-Quick summary of what the module does.
-
-Perhaps a little code snippet.
 
     use KiokuDB::Backend::MongoDB;
 
-    my $foo = KiokuDB::Backend::MongoDB->new();
+    my $conn = MongoDB::Connection->new(host => 'localhost');
+    my $mongodb    = $conn->get_database('somedb');
+    my $collection = $mongodb->get_collection('kiokutest');
+    my $mongo = KiokuDB::Backend::MongoDB->new('collection' => $collection);
+
+    my $d = KiokuDB->new(
+        backend => $mongo 
+    );
+
+    my $s = $d->new_scope;
+    my $uuid = $d->store($some_object);
     ...
 
+
+=head1 DESCRIPTION
+
+This KiokuDB backend implements the C<Clear> and the C<Query::Simple>
+roles.  The C<Scan> role is implemented but disabled as it gives
+sporadic test failures.
 
 =head1 AUTHOR
 
@@ -216,7 +234,7 @@ Yuval Kogman (KiokuDB::Backend::CouchDB) and Florian Ragwitz (MongoDB).
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009 Ask Bjørn Hansen, all rights reserved.
+Copyright 2009-2010 Ask Bjørn Hansen, all rights reserved.
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.
