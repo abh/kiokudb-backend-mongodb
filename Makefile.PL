@@ -16,7 +16,7 @@ WriteMakefile(
         'Moose' => 0,
 
         'KiokuDB' => '0.31',
-        'MongoDB' => '0.02',
+        'MongoDB' => '0.29',
 
         'Data::Stream::Bulk' => '0.07',
 
