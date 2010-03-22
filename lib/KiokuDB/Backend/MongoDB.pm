@@ -2,7 +2,7 @@ package KiokuDB::Backend::MongoDB;
 use Moose;
 
 use namespace::clean -except => 'meta';
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 with qw(
          KiokuDB::Backend
@@ -15,8 +15,7 @@ with qw(
 #    KiokuDB::Backend::Role::Scan
 #     (for some reason then all_entries doesn't always return all entries)
 
-use Carp qw(croak);
-use Data::Stream::Bulk::Util qw(bulk);
+use MongoDB::Connection;
 use Data::Stream::Bulk::Callback ();
 
 has [qw/database_name database_host database_port collection_name/] => (
