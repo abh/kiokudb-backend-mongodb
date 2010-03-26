@@ -18,6 +18,7 @@ with qw(
 use Carp qw(croak);
 use Data::Stream::Bulk::Util qw(bulk);
 use Data::Stream::Bulk::Callback ();
+use MongoDB::Connection; # In case we are expected to create the connection
 
 has [qw/database_name database_host database_port collection_name/] => (
     is  => 'ro',
