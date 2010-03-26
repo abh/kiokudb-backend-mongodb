@@ -15,7 +15,7 @@ with qw(
 #    KiokuDB::Backend::Role::Scan
 #     (for some reason then all_entries doesn't always return all entries)
 
-use MongoDB::Connection;
+use MongoDB::Connection; # In case we are expected to create the connection
 use Data::Stream::Bulk::Callback ();
 
 has [qw/database_name database_host database_port collection_name/] => (
