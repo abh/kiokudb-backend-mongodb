@@ -8,6 +8,7 @@ with qw(
          KiokuDB::Backend
          KiokuDB::Backend::Serialize::JSPON
          KiokuDB::Backend::Role::Clear
+         KiokuDB::Backend::Role::Scan
          KiokuDB::Backend::Role::Query::Simple
 );
 
@@ -55,13 +56,10 @@ sub clear {
 
 sub all_entries {
     my $self   = shift;
-    my $count = $self->collection->count({});
     my $cursor = $self->collection->query({});
     Data::Stream::Bulk::Callback->new(
         callback => sub {
             if (my $obj = $cursor->next) {
-                #warn "NAME: ", $obj->{data}->{name};
-                #pp($obj);
                 return [$self->deserialize($obj)];
             }
             return;
@@ -184,9 +182,8 @@ KiokuDB::Backend::MongoDB - MongoDB backend for KiokuDB
 
 =head1 DESCRIPTION
 
-This KiokuDB backend implements the C<Clear> and the C<Query::Simple>
-roles.  The C<Scan> role is implemented but disabled as it gives
-sporadic test failures.
+This KiokuDB backend implements the C<Clear>, C<Scan> and the C<Query::Simple>
+roles.
 
 =head1 AUTHOR
 
