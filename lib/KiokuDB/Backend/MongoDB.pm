@@ -94,10 +94,10 @@ sub get {
         $self->get_entry($_)
     } @ids;
 }
- 
+
 sub get_entry {
     my ($self, $id) = @_;
-    my $obj = $self->collection->find_one({ _id => $id });
+    my $obj = eval { $self->collection->find_one({ _id => $id }); };
     return undef unless $obj;
     return $self->deserialize($obj);
 }

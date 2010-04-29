@@ -1,5 +1,11 @@
 Revision history for KiokuDB-Backend-MongoDB
 
-0.01    January 22, 2010
-        First version, released on an unsuspecting world.
+0.02  April 29, 2010
+   - Add Role::Scan capability
+   - Fix bug not loading MongoDB::Connection in some cases
+   - Require MongoDB 0.29 to fix utf-8 issue
+   - Minor distribution tweaks
+
+0.01  January 22, 2010
+   - First version, released on an unsuspecting world.
 
