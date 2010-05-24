@@ -55,16 +55,8 @@ sub clear {
 }
 
 sub all_entries {
-    my $self   = shift;
-    my $cursor = $self->collection->query({});
-    Data::Stream::Bulk::Callback->new(
-        callback => sub {
-            if (my $obj = $cursor->next) {
-                return [$self->deserialize($obj)];
-            }
-            return;
-        }
-    );
+    my $self = shift;
+    return $self->_proto_search({});
 }
 
 sub insert {
@@ -126,13 +118,15 @@ sub simple_search {
         my $value = delete $proto->{$key};
         $proto->{"data.$key"} = ( defined $value ? "$value" : $value );
     }
-
+    return $self->_proto_search($proto);
+}
+sub _proto_search {
+    my ($self, $proto) = @_;
     my $cursor = $self->collection->query($proto);
     return Data::Stream::Bulk::Callback->new(
         callback => sub {
             if (my $obj = $cursor->next) {
                 return [$self->deserialize($obj)];
-                #return [$obj];
             }
             return;
         }
