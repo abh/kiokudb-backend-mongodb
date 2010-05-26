@@ -12,10 +12,6 @@ with qw(
          KiokuDB::Backend::Role::Query::Simple
 );
 
-# TODO: 
-#    KiokuDB::Backend::Role::Scan
-#     (for some reason then all_entries doesn't always return all entries)
-
 use MongoDB::Connection; # In case we are expected to create the connection
 use Data::Stream::Bulk::Callback ();
 
