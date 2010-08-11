@@ -4,15 +4,15 @@ use Moose;
 use namespace::clean -except => 'meta';
 
 with qw(
-         KiokuDB::Backend
-         KiokuDB::Backend::Serialize::JSPON
-         KiokuDB::Backend::Role::Clear
-         KiokuDB::Backend::Role::Scan
-         KiokuDB::Backend::Role::Query::Simple
-         KiokuDB::Backend::Role::Query
+  KiokuDB::Backend
+  KiokuDB::Backend::Serialize::JSPON
+  KiokuDB::Backend::Role::Clear
+  KiokuDB::Backend::Role::Scan
+  KiokuDB::Backend::Role::Query::Simple
+  KiokuDB::Backend::Role::Query
 );
 
-use MongoDB::Connection; # In case we are expected to create the connection
+use MongoDB::Connection;    # In case we are expected to create the connection
 use Data::Stream::Bulk::Callback ();
 
 has [qw/database_name database_host database_port collection_name/] => (
@@ -21,15 +21,15 @@ has [qw/database_name database_host database_port collection_name/] => (
 );
 
 has collection => (
-    isa => 'MongoDB::Collection',
-    is  => 'ro',
-    lazy => 1,
+    isa     => 'MongoDB::Collection',
+    is      => 'ro',
+    lazy    => 1,
     builder => '_build_collection',
 );
 
-has '+id_field'    => ( default => "_id" );
-has '+class_field' => ( default => "class" );
-has '+class_meta_field' => ( default => "class_meta" );
+has '+id_field'         => (default => "_id");
+has '+class_field'      => (default => "class");
+has '+class_meta_field' => (default => "class_meta");
 
 sub _build_collection {
     my ($self) = @_;
@@ -37,7 +37,8 @@ sub _build_collection {
     my $port = $self->database_port || 27017;
     die "collection_name required" unless $self->collection_name;
     my $conn = MongoDB::Connection->new(host => $host, port => $port);
-    return $conn->get_database($self->database_name)->get_collection($self->collection_name);
+    return $conn->get_database($self->database_name)
+      ->get_collection($self->collection_name);
 }
 
 sub BUILD {
@@ -61,9 +62,9 @@ sub insert {
     my $coll = $self->collection;
 
     for my $entry (@entries) {
-        my $collapsed = $self->serialize($entry); 
+        my $collapsed = $self->serialize($entry);
         if ($entry->prev) {
-            $coll->update({ _id => $collapsed->{_id} }, $collapsed);
+            $coll->update({_id => $collapsed->{_id}}, $collapsed);
             my $err = $coll->_database->run_command({getlasterror => 1});
             die $err->{err} if $err->{err};
         }
@@ -78,14 +79,12 @@ sub insert {
 
 sub get {
     my ($self, @ids) = @_;
-    return map {
-        $self->get_entry($_)
-    } @ids;
+    return map { $self->get_entry($_) } @ids;
 }
 
 sub get_entry {
     my ($self, $id) = @_;
-    my $obj = eval { $self->collection->find_one({ _id => $id }); };
+    my $obj = eval { $self->collection->find_one({_id => $id}); };
     return undef unless $obj;
     return $self->deserialize($obj);
 }
@@ -102,7 +101,8 @@ sub delete {
 sub exists {
     my ($self, @ids) = @_;
     my $coll = $self->collection;
-    return map { $coll->find_one({ _id => $_ }) } @ids;
+    return map { $coll->find_one({_id => $_}) } @ids;
+
     # $self->get(@ids);
 }
 
@@ -116,7 +116,7 @@ sub search {
 
     for my $key (keys %$proto) {
         next if $key =~ m/^data\./;
-		next if $key eq 'class';
+        next if $key eq 'class';
         my $value = delete $proto->{$key};
         $proto->{"data.$key"} = $value;
     }
@@ -130,7 +130,8 @@ sub _proto_search {
     return Data::Stream::Bulk::Callback->new(
         callback => sub {
             if (my $obj = $cursor->next) {
-				$obj->{_id} = $obj->{_id}->to_string if (ref $obj->{_id} eq 'MongoDB::OID');
+                $obj->{_id} = $obj->{_id}->to_string
+                  if (ref $obj->{_id} eq 'MongoDB::OID');
                 return [$self->deserialize($obj)];
             }
             return;
@@ -145,10 +146,9 @@ sub serialize {
 }
 
 sub deserialize {
-    my ( $self, $doc, @args ) = @_;
-    $self->expand_jspon( $doc, @args );
+    my ($self, $doc, @args) = @_;
+    $self->expand_jspon($doc, @args);
 }
-
 
 
 __PACKAGE__->meta->make_immutable;
