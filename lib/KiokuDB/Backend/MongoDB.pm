@@ -10,6 +10,7 @@ with qw(
          KiokuDB::Backend::Role::Clear
          KiokuDB::Backend::Role::Scan
          KiokuDB::Backend::Role::Query::Simple
+         KiokuDB::Backend::Role::Query
 );
 
 use MongoDB::Connection; # In case we are expected to create the connection
@@ -108,20 +109,29 @@ sub exists {
 
 sub simple_search {
     my ($self, $proto) = @_;
+    return $self->search($proto);
+}
+
+sub search {
+    my ($self, $proto, $args) = @_;
 
     for my $key (keys %$proto) {
         next if $key =~ m/^data\./;
+		next if $key eq 'class';
         my $value = delete $proto->{$key};
-        $proto->{"data.$key"} = ( defined $value ? "$value" : $value );
+        $proto->{"data.$key"} = $value;
     }
-    return $self->_proto_search($proto);
+
+    return $self->_proto_search($proto, $args);
 }
+
 sub _proto_search {
-    my ($self, $proto) = @_;
-    my $cursor = $self->collection->query($proto);
+    my ($self, $proto, $args) = @_;
+    my $cursor = $self->collection->query($proto, $args);
     return Data::Stream::Bulk::Callback->new(
         callback => sub {
             if (my $obj = $cursor->next) {
+				$obj->{_id} = $obj->{_id}->to_string if (ref $obj->{_id} eq 'MongoDB::OID');
                 return [$self->deserialize($obj)];
             }
             return;
