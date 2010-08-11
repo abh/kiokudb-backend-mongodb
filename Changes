@@ -1,5 +1,11 @@
 Revision history for KiokuDB-Backend-MongoDB
 
+{{$NEXT}}
+   - Implemented backend specific search, fixed MongoDB::OID problem,
+     fixed search value typechange (Torsten Raudssus)
+   - Reuse search deserialize callback method (Andreas Marienborg)
+   - Remove comment saying Role::Scan is missing when it's not anymore
+
 0.02  April 29, 2010
    - Add Role::Scan capability
    - Fix bug not loading MongoDB::Connection in some cases
