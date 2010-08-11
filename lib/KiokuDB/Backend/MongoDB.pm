@@ -2,7 +2,6 @@ package KiokuDB::Backend::MongoDB;
 use Moose;
 
 use namespace::clean -except => 'meta';
-our $VERSION = '0.02';
 
 with qw(
          KiokuDB::Backend

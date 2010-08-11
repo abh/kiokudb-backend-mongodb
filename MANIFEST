@@ -1,9 +1,0 @@
-Changes
-lib/KiokuDB/Backend/MongoDB.pm
-Makefile.PL
-MANIFEST
-MANIFEST.SKIP
-README
-t/00-load.t
-t/mongodb.t
-t/pod.t
