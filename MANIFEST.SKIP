@@ -44,3 +44,7 @@
 \.(?:bs|c|o)$
 
 \.gitignore$
+
+
+# Avoid MYMETA files
+\bMYMETA.(json|yml)$

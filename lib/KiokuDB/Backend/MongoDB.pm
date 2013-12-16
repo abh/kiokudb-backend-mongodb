@@ -1,4 +1,9 @@
 package KiokuDB::Backend::MongoDB;
+
+=encoding utf8
+
+=cut
+
 use Moose;
 
 use namespace::clean -except => 'meta';
